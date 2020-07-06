@@ -27,6 +27,7 @@ class FaceDetection {
   }
 
   async debugImage(image, detections, fileName) {
+    return new Promise(resolve => {
     faceapi.draw.drawDetections(image, detections);
     faceapi.draw.drawFaceLandmarks(image, detections);
     const out = fs.createWriteStream(
@@ -38,6 +39,8 @@ class FaceDetection {
     );
     const stream = image.createPNGStream();
     stream.pipe(out);
+      stream.on("end", resolve);
+    });
   }
 }
 

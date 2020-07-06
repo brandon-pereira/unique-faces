@@ -1,6 +1,8 @@
 import FaceDetection from "./src/FaceDetection";
+import ora from "ora";
 
 (async function () {
+  const spinner = ora("Initializing Face Detection Library").start();
   // Creates a new instance of facedetection library
   const faceDetection = new FaceDetection();
   // Loads all required ML models
@@ -8,6 +10,9 @@ import FaceDetection from "./src/FaceDetection";
   // For each image, detect faces
   const images = ["./IMG_200.jpg", "./IMG_201.jpg", "./pp.jpg"];
   for (let imgPath of images) {
+    spinner.start(`Processing ${imgPath}`);
     await faceDetection.findAllUniqueFaces(imgPath);
+    spinner.succeed(`Processing ${imgPath}`);
   }
+  spinner.stop();
 })();
