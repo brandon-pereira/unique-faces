@@ -8,11 +8,17 @@ import ora from "ora";
   // Loads all required ML models
   await faceDetection.init();
   // For each image, detect faces
-  const images = ["./IMG_200.jpg", "./IMG_201.jpg", "./pp.jpg"];
+  const images = [
+    "./IMG_200.jpg",
+    "./IMG_101.jpg",
+    "./IMG_302.jpg",
+    "./IMG_297.jpg",
+  ];
   for (let imgPath of images) {
     spinner.start(`Processing ${imgPath}`);
     await faceDetection.findAllUniqueFaces(imgPath);
     spinner.succeed(`Processing ${imgPath}`);
   }
   spinner.stop();
+  console.log(JSON.stringify(faceDetection._manifest));
 })();
