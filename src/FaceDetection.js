@@ -3,14 +3,23 @@ import loadModels from "./loadModels";
 import { loadImage, createCanvas } from "canvas";
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
+import { writeJSON } from "fs-extra";
 
 class FaceDetection {
-  constructor() {
+  constructor(opts = {}) {
+    this._outputDir = opts.outputDir || "output";
     this._detections = [];
     this._manifest = {
-      photos: {},
+      photos: [],
       users: {},
     };
+  }
+  async export() {
+    await writeJSON(
+      path.join(this._outputDir, "manifest.json"),
+      this._manifest
+    );
   }
 
   async init() {
@@ -32,35 +41,55 @@ class FaceDetection {
       .withFaceDescriptors();
   }
 
-  async addToManifest(faceId, imagePath, face) {
+  async addToManifest(faceId, imagePath, face, canvas) {
     // add user to photo
-    let photo = this._manifest.photos[imagePath];
+    let photo = this._manifest.photos.find(
+      photo => photo.id === this.getFileName(imagePath)
+    );
     if (!photo) {
-      photo = {};
-      this._manifest.photos[imagePath] = photo;
+      photo = {
+        id: this.getFileName(imagePath),
+        faces: {},
+      };
+      this._manifest.photos.push(photo);
     }
-    photo[faceId] = face.alignedRect._box;
+    photo.faces[faceId] = face.alignedRect._box;
     // add photo to user
     let user = this._manifest.users[faceId];
     if (!user) {
       user = {
         photos: [],
-        mainPhoto: await this.generateThumbnail(faceId, face),
+        mainPhoto: await this.generateThumbnail(faceId, face, canvas),
       };
       this._manifest.users[faceId] = user;
     }
-    user.photos.push(imagePath);
+    user.photos.push(this.getFileName(imagePath));
   }
 
-  async generateThumbnail() {
-    return "todo.jpg";
+  async generateThumbnail(faceId, face, canvas) {
+    return new Promise((resolve, reject) => {
+      const fileName = `${faceId}.jpg`;
+      const outputPath = path.resolve(this._outputDir, fileName);
+      const pic = this.cropCanvas(
+        canvas,
+        face.alignedRect._box.x,
+        face.alignedRect._box.y,
+        face.alignedRect._box.width,
+        face.alignedRect._box.height
+      );
+      const out = fs.createWriteStream(outputPath);
+      const stream = pic.createPNGStream();
+      stream.pipe(out);
+      stream.on("end", resolve(fileName));
+      stream.on("error", reject(err));
+    });
   }
 
   async findAllUniqueFaces(imgPath) {
     const canvas = await this.loadImage(imgPath);
     const detections = await this.getAllFaces(canvas);
     // for each face
-    detections.forEach(face => {
+    const promises = detections.map(async face => {
       // see if we've seen this person
       let bestMatch = this.getBestMatch(face);
       // if we haven't seen them, save them
@@ -70,9 +99,9 @@ class FaceDetection {
         // else, add to existing face
         this.addToExistingFace(bestMatch._label, face);
       }
-      this.addToManifest(bestMatch._label, imgPath, face);
+      await this.addToManifest(bestMatch._label, imgPath, face, canvas);
     });
-
+    await Promise.all(promises);
     // await this.debugImage(canvas, detections, imgPath);
     return detections;
   }
@@ -94,7 +123,10 @@ class FaceDetection {
   }
 
   addToExistingFace(faceId, face) {
-    const match = this._detections[faceId];
+    const match = this._detections.find(
+      detection => detection._label === faceId
+    );
+
     this._detections[faceId] = new faceapi.LabeledFaceDescriptors(faceId, [
       ...match._descriptors,
       face.descriptor,
@@ -103,37 +135,27 @@ class FaceDetection {
 
   createNewFace(face) {
     this._detections.push(
-      new faceapi.LabeledFaceDescriptors(this._detections.length.toString(), [
-        face.descriptor,
-      ])
+      new faceapi.LabeledFaceDescriptors(this.generateUUID(), [face.descriptor])
     );
     return this._detections[this._detections.length - 1];
   }
 
-  async debugImage(image, detections, fileName) {
-    return new Promise(resolve => {
-      faceapi.draw.drawDetections(image, detections);
-      // faceapi.draw.drawFaceLandmarks(image, detections);
-      detections.forEach((result, i) => {
-        const bestMatch = this.getBestMatch(result);
-        const box = detections[i].detection.box;
-        const drawBox = new faceapi.draw.DrawBox(box, {
-          label: bestMatch.toString(),
-        });
-        drawBox.draw(image);
-      });
+  generateUUID() {
+    return crypto.randomBytes(16).toString("hex");
+  }
 
-      const out = fs.createWriteStream(
-        path.resolve(
-          process.cwd(),
-          "temp",
-          fileName.replace(".", "").replace("/", "")
-        )
-      );
-      const stream = image.createPNGStream();
-      stream.pipe(out);
-      stream.on("end", resolve);
-    });
+  cropCanvas(canvas, x, y, width, height) {
+    // create a temp canvas
+    const newCanvas = createCanvas(width, height);
+    // draw the canvas in the new resized temp canvas
+    newCanvas
+      .getContext("2d")
+      .drawImage(canvas, x, y, width, height, 0, 0, width, height);
+    return newCanvas;
+  }
+
+  getFileName(filePath) {
+    return filePath.split("/").pop();
   }
 }
 

@@ -1,12 +1,13 @@
 {
-  "name": "face-detection",
-  "version": "1.0.0",
+  "name": "unique-faces",
+  "version": "0.0.1",
   "description": "",
   "main": "index.js",
   "dependencies": {
     "@tensorflow/tfjs-node": "^1.7.4",
     "canvas": "^2.6.1",
     "face-api.js": "^0.22.2",
+    "fs-extra": "^9.0.1",
     "node-fetch": "^2.6.0"
   },
   "devDependencies": {
