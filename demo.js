@@ -1,13 +1,16 @@
 import FaceDetection from "./src/FaceDetection";
 import path from "path";
 import ora from "ora";
-import { readdir } from "fs-extra";
+import { mkdir, readdir, remove } from "fs-extra";
 
 (async function () {
   const spinner = ora("Initializing Face Detection Library").start();
-  const inputPath = path.resolve("./input");
+  const inputPath = path.resolve("../wedding/scripts/input");
   const outputDir = path.resolve("../wedding/public/facedetection");
-  const images = await readdir(inputPath);
+  // delete then remake directory
+  await remove(outputDir);
+  await mkdir(outputDir);
+  const images = (await readdir(inputPath)).filter(img => img.endsWith(".jpg"));
   // Creates a new instance of facedetection library
   const faceDetection = new FaceDetection({
     outputDir,

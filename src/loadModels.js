@@ -1,6 +1,6 @@
 import path from "path";
 
-const MODELS_URL = path.join(__dirname, "../../face-api.js-models");
+const MODELS_URL = path.join(__dirname, "../model");
 
 export default async function (faceapi) {
   // Load the face recognition models

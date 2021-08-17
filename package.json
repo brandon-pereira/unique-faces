@@ -2,7 +2,7 @@
   "name": "unique-faces",
   "version": "0.0.1",
   "description": "",
-  "main": "index.js",
+  "main": "./dist.js",
   "dependencies": {
     "@tensorflow/tfjs-node": "^1.7.4",
     "canvas": "^2.6.1",
@@ -15,9 +15,13 @@
     "eslint-plugin-prettier": "^3.1.4",
     "esm": "^3.2.25",
     "ora": "^4.0.4",
-    "prettier": "^2.0.5"
+    "prettier": "^2.0.5",
+    "rollup": "^2.33.3",
+    "rollup-plugin-node-externals": "^2.2.0"
   },
   "scripts": {
+    "build": "rollup ./src/index.js --file ./index.js --format cjs",
+    "prepublish": "npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",

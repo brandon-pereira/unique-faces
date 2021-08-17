@@ -56,32 +56,49 @@ class FaceDetection {
     photo.faces[faceId] = face.alignedRect._box;
     // add photo to user
     let user = this._manifest.users[faceId];
+    const isFullFace = this.isFaceInCanvas(face, canvas);
+    if (user && !user.isFullFace && isFullFace) {
+      user.mainPhoto = await this.generateThumbnail(faceId, face, canvas);
+      console.log(user.mainPhoto);
+      this._manifest.users[faceId] = user;
+    }
     if (!user) {
       user = {
         photos: [],
         mainPhoto: await this.generateThumbnail(faceId, face, canvas),
+        isFullFace: this.isFaceInCanvas(face, canvas),
       };
       this._manifest.users[faceId] = user;
     }
+
     user.photos.push(this.getFileName(imagePath));
   }
 
-  async generateThumbnail(faceId, face, canvas) {
+  isFaceInCanvas(face, canvas) {
+    const _box = face.alignedRect._box;
+    return (
+      _box.y + _box.height <= canvas.height &&
+      _box.x + _box.width < canvas.width
+    );
+  }
+
+  generateThumbnail(faceId, face, canvas) {
     return new Promise((resolve, reject) => {
       const fileName = `${faceId}.jpg`;
       const outputPath = path.resolve(this._outputDir, fileName);
+      const _box = face.alignedRect._box;
       const pic = this.cropCanvas(
         canvas,
-        face.alignedRect._box.x,
-        face.alignedRect._box.y,
-        face.alignedRect._box.width,
-        face.alignedRect._box.height
+        _box.x,
+        _box.y,
+        _box.width,
+        _box.height
       );
       const out = fs.createWriteStream(outputPath);
       const stream = pic.createPNGStream();
       stream.pipe(out);
-      stream.on("end", resolve(fileName));
-      stream.on("error", reject(err));
+      stream.on("end", () => resolve(fileName));
+      stream.on("error", reject);
     });
   }
 
